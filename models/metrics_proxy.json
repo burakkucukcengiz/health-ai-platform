@@ -1,0 +1,21 @@
+{
+  "label": "proxy_metabolic_nafld (ALT + metabolic criteria)",
+  "cv_auc_mean": 0.7988886762201725,
+  "cv_auc_std": 0.004627166786209587,
+  "test_auc": 0.7925977364252093,
+  "test_pr_auc": 0.4919297850140476,
+  "positive_rate": 0.2659020014337473,
+  "features": [
+    "RIAGENDR",
+    "BMI",
+    "BMXWT",
+    "BMXHT",
+    "Waist_cm",
+    "SBP",
+    "DBP",
+    "Triglyceride",
+    "LDL",
+    "Total_Cholesterol",
+    "HDL"
+  ]
+}
