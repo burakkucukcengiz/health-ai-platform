@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import joblib
-import numpy as np
 import os
+import pandas as pd
 
 app = Flask(__name__)
 CORS(app)
@@ -15,9 +15,9 @@ FEATURES_PATH = os.path.join(BASE_DIR, '..', 'models', 'feature_names_proxy.pkl'
 FEATURES = ['RIAGENDR', 'BMI', 'BMXWT', 'BMXHT', 'Waist_cm', 'SBP', 'DBP',
             'Triglyceride', 'LDL', 'Total_Cholesterol', 'HDL']
 
-# Eşik: test setinde precision/recall dengesine göre sonra belirlenecek
-THRESHOLD_MODERATE = 0.3
-THRESHOLD_HIGH = 0.6
+# Eşikler: OOF (5-fold CV) analizine göre seçildi (scripts/threshold_analysis.py)
+THRESHOLD_MODERATE = 0.50
+THRESHOLD_HIGH = 0.67
 
 try:
     model = joblib.load(MODEL_PATH)
@@ -48,6 +48,9 @@ def predict_nafld():
 
         data = request.get_json()
 
+        if data['height_cm'] <= 0 or data['weight_kg'] <= 0:
+            return jsonify({'success': False, 'error': 'Boy ve kilo pozitif olmalı'}), 400
+
         sex_code = 1 if data['sex'] == 'male' else 2  # NHANES: 1=erkek, 2=kadın
         height_m = data['height_cm'] / 100.0
         bmi = data['weight_kg'] / (height_m ** 2)
@@ -58,7 +61,7 @@ def predict_nafld():
             data['triglyceride'], data['ldl'],
             data['total_cholesterol'], data['hdl'],
         ]]
-        features = np.array(row)
+        features = pd.DataFrame(row, columns=FEATURES)
 
         risk_prob = float(model.predict_proba(features)[0, 1])
 
@@ -76,8 +79,11 @@ def predict_nafld():
         })
     except KeyError as e:
         return jsonify({'success': False, 'error': f'Eksik alan: {e}'}), 400
+    except (TypeError, ValueError) as e:
+        return jsonify({'success': False, 'error': f'Geçersiz girdi: {e}'}), 400
     except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
+        print(f"Sunucu hatası: {e}")
+        return jsonify({'success': False, 'error': 'Sunucu hatası'}), 500
 
 
 if __name__ == '__main__':
