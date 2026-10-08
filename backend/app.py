@@ -8,7 +8,7 @@ CORS(app)
 
 # Load model
 try:
-    model = joblib.load('../models/nafld_model.pkl')
+    model = joblib.load('../models/nafld_model_51k.pkl')
     print("✅ Model loaded")
 except Exception as e:
     print(f"❌ Error: {e}")
@@ -16,7 +16,7 @@ except Exception as e:
 
 @app.route('/health', methods=['GET'])
 def health():
-    return jsonify({'status': 'ok', 'auc': 0.9892})
+    return jsonify({'status': 'ok', 'auc': 0.9940, 'training_samples': 51613, 'cycles': '1999-2018'})
 
 @app.route('/api/predict/nafld', methods=['POST'])
 def predict_nafld():
@@ -41,7 +41,7 @@ def predict_nafld():
         return jsonify({
             'success': True,
             'risk_score': float(risk_prob),
-            'risk_level': risk_level
+        'risk_level': risk_level
         })
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
