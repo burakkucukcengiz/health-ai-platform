@@ -9,3 +9,5 @@ __pycache__/
 .env
 models/*.pkl
 models/*.joblib
+data/raw/
+data/processed/nafld_multicycle_clean.csv
