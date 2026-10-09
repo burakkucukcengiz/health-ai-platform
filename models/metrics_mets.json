@@ -1,0 +1,20 @@
+{
+  "label": "metabolic_syndrome_ATPIII",
+  "n_samples": 18009,
+  "positive_rate": 0.32617024820922874,
+  "test_auc": 0.9751730969851581,
+  "test_pr_auc": 0.9473991627317542,
+  "features": [
+    "RIAGENDR",
+    "BMI",
+    "BMXWT",
+    "BMXHT",
+    "Waist_cm",
+    "SBP",
+    "DBP",
+    "Triglyceride",
+    "LDL",
+    "Total_Cholesterol",
+    "HDL"
+  ]
+}
