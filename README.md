@@ -55,6 +55,18 @@ Bu etiket FIB-4 ve APRI formüllerinden **türetilmez**. Ancak ALT kullandığı
 
 Eski FIB-4 tabanlı modelde AUC 0.99 çıkmıştı. Bu değer etiket sızıntısından kaynaklanıyordu ve kullanılmıyor.
 
+### Model karşılaştırması
+
+Aynı özellikler, aynı eğitim/test bölünmesi (`random_state=42`, stratified) ve aynı etiket kullanıldı (`scripts/baseline_compare.py`):
+
+| Model | CV AUC (5-katlı) | Test AUC | CV PR-AUC | Test PR-AUC |
+|---|---|---|---|---|
+| Logistic regression (baseline) | 0.7727 ± 0.0032 | 0.7647 | 0.4836 | 0.4752 |
+| Random Forest (seçilen) | 0.7989 ± 0.0046 | 0.7926 | 0.4978 | 0.4919 |
+
+Random Forest, logistic baseline'a göre AUC'de yaklaşık 0.026 (CV) ve PR-AUC'de yaklaşık 0.014 (CV) üstünlük sağlıyor. Fark küçük olmakla birlikte tutarlı. Logistic regressionun güçlü performansı, etiketin büyük ölçüde doğrusal bir kombinasyon olduğunu düşündürüyor; bu bir hipotez olarak değerlendirilmelidir.
+
+
 ## Eşik seçimi
 
 Risk seviyeleri, test setine bakılmadan 5-katlı çapraz doğrulamanın out-of-fold tahminleri üzerinden seçildi (`scripts/threshold_analysis.py`):
