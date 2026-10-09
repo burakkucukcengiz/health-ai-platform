@@ -41,6 +41,22 @@ except Exception as e:
     print(f"MetS model error: {e}")
     mets_model = None
 
+# ---- HOMA-IR (insulin direnci) modeli ----
+MODEL_HOMA_PATH = os.path.join(BASE_DIR, '..', 'models', 'homa_model.pkl')
+FEATURES_HOMA_PATH = os.path.join(BASE_DIR, '..', 'models', 'feature_names_homa.pkl')
+
+THRESHOLD_HOMA_MODERATE = 0.40
+THRESHOLD_HOMA_HIGH = 0.60
+
+try:
+    homa_model = joblib.load(MODEL_HOMA_PATH)
+    homa_feature_names = joblib.load(FEATURES_HOMA_PATH)
+    assert list(homa_feature_names) == FEATURES, "HOMA-IR feature sirasi uyusmuyor"
+    print("Model loaded: HOMA-IR")
+except Exception as e:
+    print(f"HOMA-IR model error: {e}")
+    homa_model = None
+
 
 def build_features(data):
     if data['height_cm'] <= 0 or data['weight_kg'] <= 0:
@@ -85,6 +101,8 @@ def health():
             'nafld_proxy': {'test_auc': 0.7926, 'training_samples': 51613},
             'metabolic_syndrome': {'test_auc': 0.9752, 'naive_baseline_auc': 0.9624,
                                     'training_samples': 18009},
+            'homa_ir': {'test_auc': 0.8127, 'logistic_test_auc': 0.8141,
+                        'training_samples': 7562, 'threshold': 2.5},
         },
         'cycles': '1999-2018',
     })
@@ -151,6 +169,41 @@ def predict_mets():
             'model_score': round(model_score, 4),
             'note': 'Glikoz olculmedigi icin tam ATP III tanisi (5 kriter) yapilamaz; '
                     'bu sonuc 4 kriterin bir ozetidir.',
+        })
+    except KeyError as e:
+        return jsonify({'success': False, 'error': f'Eksik alan: {e}'}), 400
+    except (TypeError, ValueError) as e:
+        return jsonify({'success': False, 'error': f'Gecersiz girdi: {e}'}), 400
+    except Exception as e:
+        print(f"Sunucu hatasi: {e}")
+        return jsonify({'success': False, 'error': 'Sunucu hatasi'}), 500
+
+
+@app.route('/api/predict/homair', methods=['POST'])
+def predict_homair():
+    try:
+        if homa_model is None:
+            return jsonify({'success': False, 'error': 'Model yuklenemedi'}), 500
+
+        data = request.get_json()
+        features, _ = build_features(data)
+
+        risk_prob = float(homa_model.predict_proba(features)[0, 1])
+
+        if risk_prob < THRESHOLD_HOMA_MODERATE:
+            risk_level = 'Low'
+        elif risk_prob < THRESHOLD_HOMA_HIGH:
+            risk_level = 'Moderate'
+        else:
+            risk_level = 'High'
+
+        return jsonify({
+            'success': True,
+            'risk_score': round(risk_prob, 4),
+            'risk_level': risk_level,
+            'note': 'Bu model glikoz ve insulin degerlerini OZELLIK OLARAK KULLANMAZ; '
+                    'bunlar sadece egitim hedefini (HOMA-IR >= 2.5) hesaplamak icin kullanildi. '
+                    'Bu nedenle NAFLD ve MetS modellerinden farkli olarak sizinti icermez.',
         })
     except KeyError as e:
         return jsonify({'success': False, 'error': f'Eksik alan: {e}'}), 400

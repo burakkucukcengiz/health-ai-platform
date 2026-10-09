@@ -3,6 +3,7 @@ import './App.css';
 
 const API_URL_NAFLD = 'http://localhost:8000/api/predict/nafld';
 const API_URL_METS = 'http://localhost:8000/api/predict/mets';
+const API_URL_HOMA = 'http://localhost:8000/api/predict/homair';
 
 const INITIAL_DATA = {
   sex: 'male',
@@ -73,6 +74,7 @@ function App() {
   const [formData, setFormData] = useState(INITIAL_DATA);
   const [result, setResult] = useState(null);
   const [metsResult, setMetsResult] = useState(null);
+  const [homaResult, setHomaResult] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -97,7 +99,7 @@ function App() {
 
     setLoading(true);
     try {
-      const [nafldRes, metsRes] = await Promise.all([
+      const [nafldRes, metsRes, homaRes] = await Promise.all([
         fetch(API_URL_NAFLD, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -108,9 +110,15 @@ function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(formData),
         }),
+        fetch(API_URL_HOMA, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(formData),
+        }),
       ]);
       const nafldData = await nafldRes.json();
       const metsData = await metsRes.json();
+      const homaData = await homaRes.json();
 
       if (!nafldData.success) {
         setError(nafldData.error || 'NAFLD tahmini alinamadi.');
@@ -119,11 +127,8 @@ function App() {
         setResult(nafldData);
       }
 
-      if (metsData.success) {
-        setMetsResult(metsData);
-      } else {
-        setMetsResult(null);
-      }
+      setMetsResult(metsData.success ? metsData : null);
+      setHomaResult(homaData.success ? homaData : null);
     } catch (err) {
       console.error('Error:', err);
       setError('Backend baglantisi basarisiz. Flask sunucusunun 8000 portunda calistigini kontrol edin.');
@@ -134,13 +139,14 @@ function App() {
 
   const style = result ? RISK_STYLES[result.risk_level] : null;
   const metsStyle = metsResult ? RISK_STYLES[metsResult.risk_level] : null;
+  const homaStyle = homaResult ? RISK_STYLES[homaResult.risk_level] : null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-600 to-purple-700 p-8">
       <div className="max-w-6xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-2">Metabolik Saglik Taramasi</h1>
-          <p className="text-blue-100 text-lg">NAFLD riski ve metabolik sendrom kriterleri icin destek araci</p>
+          <p className="text-blue-100 text-lg">NAFLD riski, metabolik sendrom kriterleri ve insulin direnci icin destek araci</p>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -256,6 +262,25 @@ function App() {
                     kriter sayisina gore kurulmus basit bir kurala gore cok kucuk bir iyilestirme saglar
                     (~0.013 AUC); birincil cikti olarak kullanilmamalidir.
                   </p>
+                </div>
+              </div>
+            )}
+
+            {homaResult && (
+              <div className="bg-white rounded-2xl shadow-2xl p-8">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Insulin Direnci (HOMA-IR) Riski</h2>
+
+                <div className={`${homaStyle.bg} text-white rounded-lg p-6 mb-6`}>
+                  <p className="text-sm uppercase tracking-wide opacity-90">Risk seviyesi</p>
+                  <p className="text-4xl font-bold mt-1">{homaStyle.label}</p>
+                </div>
+
+                <div className="bg-gray-50 rounded-lg p-4 text-left">
+                  <p className="text-gray-600 text-sm mb-3">
+                    Model skoru: {homaResult.risk_score.toFixed(4)}. Esik: HOMA-IR &gt;= 2.5
+                    (klinik olarak yaygin kullanilan insulin direnci sinirlari).
+                  </p>
+                  <p className="text-gray-500 text-xs">{homaResult.note}</p>
                 </div>
               </div>
             )}

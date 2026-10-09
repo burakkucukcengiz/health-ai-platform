@@ -1,6 +1,6 @@
 # NAFLD Risk Tahmin Platformu
 
-CDC NHANES verisi (1999–2018) kullanılarak metabolik sağlık profiline dayalı NAFLD (yağlı karaciğer hastalığı) ve metabolik sendrom risk taraması yapan bir makine öğrenmesi uygulaması. Flask backend ve React frontend'den oluşur.
+CDC NHANES verisi (1999-2018) kullanılarak metabolik sağlık profiline dayalı NAFLD (yağlı karaciğer hastalığı), metabolik sendrom ve insulin direnci (HOMA-IR) risk taraması yapan bir makine öğrenmesi uygulaması. Flask backend ve React frontend'den oluşur.
 
 > **Önemli:** Bu proje bir tanı aracı değildir. Karaciğer biyopsisi ya da görüntüleme yerine vekil bir etiketle eğitilmiştir ve klinik karar yerine geçmez.
 
@@ -18,15 +18,17 @@ CDC NHANES verisi (1999–2018) kullanılarak metabolik sağlık profiline dayal
 ## Özellikler
 
 - Cinsiyet, boy, kilo, bel çevresi, tansiyon, trigliserit, LDL, toplam kolesterol ve HDL ile risk skoru hesaplama
-- Üç seviyeli sonuç: Düşük, Orta, Yüksek
-- Girdi doğrulama ve anlamlı hata mesajları
+- Üç ayrı model: NAFLD riski, metabolik sendrom kriter özeti, insulin direnci (HOMA-IR) riski
+- Üç seviyelmlı hata mesajları
 
 ## Veri
 
-- **Kaynak:** CDC NHANES, 10 döngü (1999–2000 i** 51.613 yetişkin (18 yaş ve üstü, ALT, AST ve BMI değerleri eksiksiz)
+- **Kaynak:** CDC NHANES, 10 döngü (1999-2018)
+- **Örneklem:** 51.613 yetişkin (18 yaş ve üstü, ALT, AST ve BMI değerleri eksiksiz)
 - **Metabolik sendrom alt kümesi:** 18.009 kişi (açlık glikozu ölçülmüş olanlar; bkz. aşağıda)
+- **HOMA-IR (insulin direnci) alt kümesi:** 7.562 kişi (insulin ölçümü sadece 2013-2014, 2015-2016 ve 2017-2018 döngülerinde mevcut; bkz. `scripts/download_insulin.py`)
 
-Ham ve işlenmiş veriler repoya dahil değildir (`.gitignore`). Veriyi `scripts/download_multicycle.py` ve `scripts/clean_multicycle.py` ile temizleyebilirsiniz. Metabolik sendrom alt kümesi için ayrıca `scripts/download_glucose.py` ve `scripts/merge_metabolic.py` çalıştırılmalıdır.
+Ham ve işlenmiş veriler repoya dahil değildir (`.gitignore`). Veriyi `scripts/download_multicycle.py` ve `scripts/clean_multicycle.py` ile temizleyebilirsiniz. Metabolik sendrom alt kümesi için ayrıca `scripts/download_glucose.py` ve `scripts/merge_metabolic.py`, HOMA-IR alt kümesi için `scripts/download_insulin.py` ve `scripts/merge_homa.py` çalıştırılmalıdır.
 
 ## Etiket tanımı
 
@@ -58,6 +60,16 @@ Açlık glikozu NHANES'in sadece açlık alt örnekleminde ölçüldüğü için
 
 **Önemli not:** Bu kriterlerin 4'ü (glikoz hariç) modelin girdi değişkenleriyle doğrudan aynıdır. Bu durumun modelin performans metriklerine etkisi [Model ve metrikler](#model-ve-metrikler) bölümünde ayrıca ele alınmıştır.
 
+### HOMA-IR (insulin direnci)
+
+Üçüncü bir hedef olarak, HOMA-IR (Homeostatic Model Assessment for Insulin Resistance) formülüyle insulin direnci etiketi oluşturulmuştur:
+
+HOMA-IR = (açlık glikozu [mg/dL] × açlık insulini [uIU/mL]) / 405
+
+Klinik olarak yaygın kullanılan eşik: HOMA-IR ≥ 2,5 → insulin direnci pozitif kabul edilir. Bu eşiğe göre örneklemin %49,5'i pozitiftir (dengeli bir sınıf dağılımı).
+
+**Önemli fark:** Bu etiket glikoz ve insulin ölçümlerinden hesaplanır, ancak **modelin girdi listesine glikoz veya insulin dahil edilmez** — model yalnızca NAFLD ve MetS modelleriyle aynı 11 özelliği (vücut ölçüleri ve lipid paneli) kullanır. Bu, NAFLD (kısmi örtüşme) ve metabolik sendromun (neredeyse tam örtüşme) aksine, **sıfır özellik-etiket örtüşmesi** olan tek hedeftir. Bu yüzden bu model, projedeki "sızıntı derecesi" karşılaştırmasının referans (temiz) ucunu oluşturur.
+
 ## Model ve metrikler
 
 - **Algoritma:** Random Forest (300 ağaç, `class_weight='balanced'`)
@@ -86,28 +98,50 @@ Random Forest, logistic baseline'a göre CV AUC'de yaklaşık 0.026, CV PR-AUC'd
 
 ### Metabolik sendrom modeli ve sızıntı derecesi
 
-Metabolik sendrom etiketinde, NAFLD etiketine göre çok daha ciddi bir örtüşme vardır: 5 ATP III kriterinden 4'ü (bel, TG, HDL, tansiyon) modelin girdi değişkenleriyle birebir aynıdır. Sadece açlık glikozu modele görünmez. Bunun etkisini ölçmek için, modelsiz bir referans kural tanımlandı: görünür 4 kriterin basit toplamı (0–4).
+Metabolik sendrom etiketinde, NAFLD etiketine göre çok daha ciddi bir örtüşme vardır: 5 ATP III kriterinden 4'ü (bel, TG, HDL, tansiyon) modelin girdi değişkenleriyle birebir aynıdır. Sadece açlık glikozu modele görünmez. Bunun etkisini ölçmek için, modelsiz bir referans kural tanımlandı: görünür 4 kriterin basit toplamı (0-4).
 
 | Yaklaşım | Test AUC | Test PR-AUC |
 |---|---|---|
 | Naive kural (sadece 4 kriterin toplamı, model yok) | 0.9624 | 0.8827 |
-| Random Forest (11 özellik) |orest'ın eklediği gerçek tahmin değeri çok küçüktür (yaklaşık 0.013 AUC puanı) ve esas olarak glikoz kriterinin dolaylı olarak diğer değişkenlerden kısmen tahmin edilebilmesinden kaynaklanır.
+| Random Forest (11 özellik) | 0.9752 | 0.9474 |
+| **Modelin gerçek katkısı** | **+0.0128** | — |
 
-Bu, aynı projede iki farklı sızıntı derecesini karşılaştırmak için kullanılmıştır:
+Random Forest'ın eklediği gerçek tahmin değeri çok küçüktür (yaklaşık 0.013 AUC puanı) ve esas olarak glikoz kriterinin dolaylı olarak diğer değişkenlerden kısmen tahmin edilebilmesinden kaynaklanır.
+
+### HOMA-IR modeli: sızıntısız referans
+
+HOMA-IR modelinde glikoz ve insulin hiç özellik olarak kullanılmadığı için (sadece hedef üretiminde kullanıldılar), bu model sızıntı içermeyen bir referans noktası sağlar. Aynı 11 özellikle, aynı eğitim/test bölünmesiyle:
+
+| Model | CV AUC | Test AUC | CV PR-AUC | Test PR-AUC |
+|---|---|---|---|---|
+| Logistic regression | 0.8370 | 0.8141 | 0.8287 | 0.8069 |
+| Random Forest | 0.8323 | 0.8127 | 0.8315 | 0.8120 |
+
+Dikkat çekici nokta: logistic regression, Random Forest'tan daha iyi ya da eşdeğer performans gösteriyor (0.8141 vs 0.8127). Bu, metabolik sendrom modelinde görülenin tam tersidir — orada Random Forest, kriterleri örtük biçimde ezberleyerek naive kuralın üzerine çıkıyordu. Burada ezberlenecek bir kriter kümesi olmadığı için, basit ve karmaşık modeller benzer sonuç veriyor; bu da gerçek bir ilişkinin öğrenildiğine işaret eder.
+
+### Üç modelin sızıntı derecesi karşılaştırması
+
+Aşağıdaki tablo, aynı 11 özellikle eğitilen üç modelin hedef-girdi örtüşmesini ve bunun model performansına etkisini karşılaştırır:
 
 | Model | Sızıntı türü | Model AUC | Referans/naive AUC | Modelin net katkısı |
 |---|---|---|---|---|
 | NAFLD (vekil) | Kısmi (3/5 bileşen girdide, ALT girdide değil) | 0.7926 | — (ALT ölçülmeden naive kural kurulamaz) | Anlamlı (logistic'e göre de +0.026) |
 | Metabolik sendrom | Neredeyse tam (4/5 kriter doğrudan girdi) | 0.9752 | 0.9624 | Çok düşük (+0.013) |
+| HOMA-IR (insulin direnci) | Yok (glikoz/insulin hiç girdi değil) | 0.8127 (RF) / 0.8141 (logistic) | — (kriterler girdide olmadığı için naive kural kurulamaz) | Sızıntı yok; basit model karmaşık modelden geride kalmıyor |
 
-**Pratik sonuç:** Metabolik sendrom skoru, bir "AI tahmini" olarak değil, büyük ölçüde "kaç ATP III kriterini karşılıyorsunuz" sorusunun otomatik bir özeti olarak yorumlanmalıdır. Uygulamada bu skor bu şekilde sunulur.
+**Pratik sonuç:** Metabolik sendrom skoru, bir "AI tahmini" olarak değil, büyük ölçüde "kaç ATP III kriterini karşılıyorsunuz" sorusunun otomatik bir özeti olarak yorumlanmalıdır. Uygulamada bu skor bu şekilde sunulur. HOMA-IR modeli ise, aynı özellik setiyle gerçekten "öğrenilmiş" bir ilişkinin neye benzediğini gösteren bir karşılaştırma noktasıdır.
 
 ## Eşik seçimi
 
-Risk seviyeleri, test setine bakılmadan 5-katlı çapraz doğrulamanın out-of-fold tahminleri üzerinden seçildi (`scripts/threshold_analysis.py`):
+Risk seviyeleri, test setine bakılmadan 5-katlı çapraz doğrulamanın out-of-fold tahminleri üzerinden seçildi (`scripts/threshold_analysis.py`, HOMA-IR için `scripts/threshold_homa.py`):
 
+**NAFLD modeli:**
 - **Orta:** ≥ 0.50
 - **Yüksek:** ≥ 0.67
+
+**HOMA-IR modeli:**
+- **Orta:** ≥ 0.40 (OOF precision 0.696, recall 0.838)
+- **Yüksek:** ≥ 0.60 (OOF precision 0.808, recall 0.657)
 
 Bu eşikler klinik karar eşiği değildir. Ekranda gösterilen skor bir olasılık değil, modelin ürettiği risk skorudur; `class_weight='balanced'` kullanıldığı için mutlak olasılık olarak yorumlanmamalıdır.
 
@@ -121,6 +155,7 @@ Bu eşikler klinik karar eşiği değildir. Ekranda gösterilen skor bir olasıl
 - **Popülasyon:** Veri ABD nüfusuna aittir; diğer popülasyonlarda performans farklı olabilir.
 - **Kalibrasyon:** Skorlar kalibre edilmemiştir, mutlak olasılık olarak yorumlanmamalıdır.
 - **Metabolik sendrom alt örneklemi:** Sadece açlık glikozu ölçülen 18.009 kişiyi kapsar; tüm NHANES örneklemini temsil etmeyebilir.
+- **HOMA-IR alt örneklemi:** Sadece insulin ölçümü yapılan 2013-2018 döngülerindeki 7.562 kişiyi kapsar (ana veri setinin ~%15'i); daha küçük ve daha yeni döngülere ait olduğu için diğer modellerle doğrudan karşılaştırılırken bu fark göz önünde bulundurulmalıdır. HOMA-IR ≥ 2,5 eşiği yaygın kullanılan bir klinik referans değeridir, kesin tanı ölçütü değildir.
 
 ## Kurulum
 
@@ -218,3 +253,22 @@ Metabolik sendrom kriter özeti (ATP III, glikoz hariç 4 kriter). Aynı girdi a
 ```
 
 `model_score` ikincil/deneysel bir alandır; birincil çıktı `criteria_met` ve `risk_level`dir (bkz. [Metabolik sendrom modeli ve sızıntı derecesi](#model-ve-metrikler)).
+
+### `POST /api/predict/homair`
+
+İnsulin direnci (HOMA-IR ≥ 2,5) riski. Aynı girdi alanlarını kullanır; glikoz veya insulin değeri istenmez.
+
+Örnek istek: yukarıdakiyle aynı JSON gövdesi.
+
+Örnek yanıt:
+
+```json
+{
+  "success": true,
+  "risk_score": 0.5800,
+  "risk_level": "Moderate",
+  "note": "Bu model glikoz ve insulin degerlerini OZELLIK OLARAK KULLANMAZ; bunlar sadece egitim hedefini (HOMA-IR >= 2.5) hesaplamak icin kullanildi. Bu nedenle NAFLD ve MetS modellerinden farkli olarak sizinti icermez."
+}
+```
+
+Bu model, projedeki üç model arasında sızıntı içermeyen tek modeldir (bkz. [Üç modelin sızıntı derecesi karşılaştırması](#model-ve-metrikler)). Hatalı girdide `400`, sunucu hatasında `500` döner.
