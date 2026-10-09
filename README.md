@@ -146,7 +146,7 @@ Servis durumunu ve model bilgisini döndürür.
 {
   "success": true,
   "risk_score": 0.4100,
-  "risk_level": "Moderate"
+  "risk_level": "Low"
 }
 ```
 
