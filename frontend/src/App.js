@@ -44,9 +44,21 @@ const FIELD_GROUPS = [
 ];
 
 const RISK_STYLES = {
-  Low: { bg: 'bg-green-500', text: '✅ Risk düşük. Sağlıklı yaşam alışkanlıklarını sürdürmek yeterli.' },
-  Moderate: { bg: 'bg-yellow-500', text: '⚠️ Risk orta. Bir sağlık profesyoneliyle görüşmeniz önerilir.' },
-  High: { bg: 'bg-red-500', text: '🚨 Risk yüksek. Bir hekime başvurmanız önerilir.' },
+  Low: {
+    bg: 'bg-green-500',
+    label: 'Düşük',
+    text: '✅ Risk düşük. Sağlıklı yaşam alışkanlıklarını sürdürmek yeterli.',
+  },
+  Moderate: {
+    bg: 'bg-yellow-500',
+    label: 'Orta',
+    text: '⚠️ Risk orta. Bir sağlık profesyoneliyle görüşmeniz önerilir.',
+  },
+  High: {
+    bg: 'bg-red-500',
+    label: 'Yüksek',
+    text: '🚨 Risk yüksek. Bir hekime başvurmanız önerilir.',
+  },
 };
 
 function App() {
@@ -168,21 +180,17 @@ function App() {
               <div className="text-center">
                 <h2 className="text-2xl font-bold text-gray-800 mb-6">Sonuç</h2>
 
-                <div className={`${style.bg} rounded-full w-40 h-40 mx-auto mb-6 flex items-center justify-center`}>
-                  <span className="text-white text-5xl font-bold">
-                    {(result.risk_score * 100).toFixed(0)}%
-                  </span>
-                </div>
-
-                <div className={`${style.bg} text-white rounded-lg p-4 mb-6`}>
-                  <p className="text-2xl font-bold">{result.risk_level} Risk</p>
+                <div className={`${style.bg} text-white rounded-lg p-6 mb-6`}>
+                  <p className="text-sm uppercase tracking-wide opacity-90">Risk seviyesi</p>
+                  <p className="text-4xl font-bold mt-1">{style.label}</p>
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4 text-left">
-                  <p className="text-gray-700 font-semibold mb-2">
-                    Risk skoru: {result.risk_score.toFixed(4)}
-                  </p>
                   <p className="text-gray-600 text-sm mb-3">{style.text}</p>
+                  <p className="text-gray-500 text-xs mb-3">
+                    Model skoru: {result.risk_score.toFixed(4)}. Bu bir olasılık değildir; yalnızca
+                    model içi sıralama için kullanılır. Yüzde olarak yorumlanmamalıdır.
+                  </p>
                   <p className="text-gray-500 text-xs">
                     Bu bir tanı değil, tarama amaçlı bir tahmindir. Model, karaciğer biyopsisi
                     yerine vekil bir etiketle eğitilmiştir ve klinik kararların yerini tutmaz.
