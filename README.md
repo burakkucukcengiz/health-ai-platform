@@ -191,3 +191,30 @@ Servis durumunu ve model bilgisini döndürür.
 ```
 
 Hatalı girdide `400`, sunucu hatasında `500` döner.
+
+### `POST /api/predict/mets`
+
+Metabolik sendrom kriter özeti (ATP III, glikoz hariç 4 kriter). Aynı girdi alanlarını kullanır.
+
+Örnek istek: yukarıdakiyle aynı JSON gövdesi.
+
+Örnek yanıt:
+
+```json
+{
+  "success": true,
+  "criteria_met": 1,
+  "criteria_total": 4,
+  "criteria_detail": {
+    "waist": false,
+    "triglyceride": true,
+    "hdl": false,
+    "blood_pressure": false
+  },
+  "risk_level": "Low",
+  "model_score": 0.4100,
+  "note": "Glikoz olculmedigi icin tam ATP III tanisi (5 kriter) yapilamaz; bu sonuc 4 kriterin bir ozetidir."
+}
+```
+
+`model_score` ikincil/deneysel bir alandır; birincil çıktı `criteria_met` ve `risk_level`dir (bkz. [Metabolik sendrom modeli ve sızıntı derecesi](#model-ve-metrikler)).
